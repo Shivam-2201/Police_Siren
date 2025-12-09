@@ -8,8 +8,12 @@
     "scheme": "mobileapppoc",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "assetBundlePatterns": ["**/*"],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "UIBackgroundModes": ["audio"]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +23,12 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "foregroundService": {
+        "notificationTitle": "Police Siren",
+        "notificationBody": "Waiting to play siren",
+        "notificationColor": "#ff0000"
+      }
     },
     "web": {
       "output": "static",

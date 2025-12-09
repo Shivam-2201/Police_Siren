@@ -1,98 +1,98 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { Audio } from 'expo-av';
+import React, { useEffect, useRef, useState } from 'react';
+import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [scheduled, setScheduled] = useState(false);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  useEffect(() => {
+    Audio.setAudioModeAsync({
+      allowsRecordingIOS: false,
+      interruptionModeIOS: Audio.INTERRUPTION_MODE_IOS_DO_NOT_MIX,
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: true,
+      interruptionModeAndroid: Audio.INTERRUPTION_MODE_ANDROID_DO_NOT_MIX,
+      shouldDuckAndroid: false,
+      playThroughEarpieceAndroid: false,
+    }).catch(() => {});
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (soundRef.current) {
+        soundRef.current.unloadAsync().catch(() => {});
+        soundRef.current = null;
+      }
+    };
+  }, []);
+
+  const loadSiren = async () => {
+    if (soundRef.current) return;
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        require('../../assets/siren.mp3'),
+        { shouldPlay: false, staysActiveInBackground: true }
+      );
+      soundRef.current = sound;
+    } catch (e) {
+      console.warn('Failed to load siren', e);
+    }
+  };
+
+  const onPressPlay = async () => {
+    if (scheduled) return;
+    setScheduled(true);
+
+    await loadSiren();
+
+    timerRef.current = setTimeout(async () => {
+      try {
+        await soundRef.current?.replayAsync();
+      } catch (e) {
+        console.warn('Failed to play siren', e);
+      } finally {
+        setScheduled(false);
+      }
+    }, 10000);
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.hero}>
+        <Text style={styles.title}>Police Siren</Text>
+
+        <TouchableOpacity
+          style={styles.playButton}
+          onPress={onPressPlay}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.playText}>{scheduled ? 'Scheduled...' : 'Play'}</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
+  container: { flex: 1, backgroundColor: '#000' },
+  hero: {
+    flex: 1,
+    paddingTop: 56,         // pushes hero content below any top UI
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  title: {
+    color: '#fff',
+    fontSize: 28,
+    fontWeight: '700',
+    marginBottom: 36,       // spacing between heading and CTA
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  playButton: {
+    backgroundColor: '#1f2937',
+    paddingVertical: 18,
+    paddingHorizontal: 44,
+    borderRadius: 12,
   },
+  playText: { color: '#fff', fontSize: 20, fontWeight: '700' },
 });
